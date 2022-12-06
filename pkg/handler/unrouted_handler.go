@@ -737,11 +737,19 @@ func (handler *UnroutedHandler) finishUploadIfComplete(ctx context.Context, uplo
 	return nil
 }
 
+var plainTextRe = regexp.MustCompile("(?i)script|text|html|plain|json")
+var haveCharsetRe = regexp.MustCompile("(?i)charset|utf-8|utf8")
+
 // GetFile handles requests to download a file using a GET request. This is not
 // part of the specification.
 func (handler *UnroutedHandler) GetFile(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
+	q := r.URL.Query().Get("q")
+	if q != "" {
+		handler.Query(w, r)
+		return
+	}
 	id, err := extractIDFromPath(r.URL.Path)
 	if err != nil {
 		handler.sendError(w, r, err)
@@ -774,6 +782,11 @@ func (handler *UnroutedHandler) GetFile(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Length", strconv.FormatInt(info.Offset, 10))
 
 	contentType, _ := filterContentType(info)
+
+	if plainTextRe.Match([]byte(contentType)) && !haveCharsetRe.Match([]byte(contentType)) {
+		contentType += ";charset=utf-8"
+	}
+
 	w.Header().Set("Content-Type", contentType)
 
 	filename := url.QueryEscape(info.MetaData["filename"])
@@ -965,7 +978,7 @@ func (handler *UnroutedHandler) sendError(w http.ResponseWriter, r *http.Request
 	// In some cases, the HTTP connection gets reset by the other peer. This is not
 	// necessarily the tus client but can also be a proxy in front of tusd, e.g. HAProxy 2
 	// is known to reset the connection to tusd, when the tus client closes the connection.
-	// To avoid error out in this case and loosing the uploaded data, we can ignore
+	// To avoid error out in this case and losing the uploaded data, we can ignore
 	// the error here without causing harm.
 	//if strings.Contains(err.Error(), "read: connection reset by peer") {
 	//	err = nil
@@ -1276,4 +1289,22 @@ func getRequestId(r *http.Request) string {
 	}
 
 	return reqId
+}
+
+func (handler *UnroutedHandler) Query(w http.ResponseWriter, r *http.Request) {
+	q := strings.ToLower(r.URL.Query().Get("q"))
+	if q == "" {
+		handler.sendError(w, r, errors.New("invalid/empty param q"))
+		return
+	}
+	ctx := context.Background()
+
+	fileList, err := handler.config.StoreComposer.Core.Query(ctx, q)
+
+	if err != nil {
+		handler.sendError(w, r, err)
+		return
+	}
+
+	w.Write(fileList)
 }

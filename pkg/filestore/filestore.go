@@ -12,14 +12,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tus/tusd/internal/uid"
+	"github.com/tus/tusd/pkg/handler"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/tus/tusd/internal/uid"
-	"github.com/tus/tusd/pkg/handler"
+	"regexp"
+	"strings"
 )
 
 var defaultFilePerm = os.FileMode(0664)
@@ -40,7 +40,7 @@ func New(path string) FileStore {
 	return FileStore{path}
 }
 
-// UseIn sets this store as the core data store in the passed composer and adds
+// UseIn sets this store as the core data store in the past composer and adds
 // all possible extension to it.
 func (store FileStore) UseIn(composer *handler.StoreComposer) {
 	composer.UseCore(store)
@@ -90,7 +90,7 @@ func (store FileStore) NewUpload(ctx context.Context, info handler.FileInfo) (ha
 
 func (store FileStore) GetUpload(ctx context.Context, id string) (handler.Upload, error) {
 	info := handler.FileInfo{}
-	data, err := ioutil.ReadFile(store.infoPath(id))
+	data, err := os.ReadFile(store.infoPath(id))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Interpret os.ErrNotExist as 404 Not Found
@@ -242,4 +242,83 @@ func (upload *fileUpload) writeInfo() error {
 
 func (upload *fileUpload) FinishUpload(ctx context.Context) error {
 	return nil
+}
+
+// Query file by criteria
+func (store FileStore) Query(ctx context.Context, criteria string) (result []byte, err error) {
+	//TODO implement me
+	rFileNamePattern, err := regexp.Compile(criteria)
+	if err != nil {
+		return
+	}
+
+	returnAll := false
+	if criteria == ".*" {
+		returnAll = true
+	}
+
+	var fileList []string
+	infoRe := regexp.MustCompile("\\.info$")
+	filepath.Walk(store.Path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if !infoRe.MatchString(info.Name()) {
+			return nil
+		}
+
+		data, err := os.ReadFile(fmt.Sprintf("%s/%s", store.Path, info.Name()))
+		if err != nil {
+			return err
+		}
+
+		desc := make(map[string]interface{})
+		err = json.Unmarshal(data, &desc)
+		if err != nil {
+			return err
+		}
+
+		if returnAll {
+			fileList = append(fileList, string(data))
+			return nil
+		}
+
+		d, ok := desc["MetaData"]
+		if !ok {
+			return nil
+		}
+
+		metadata, ok := d.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+
+		d, ok = metadata["filename"]
+		if !ok {
+			return nil
+		}
+
+		filename, ok := d.(string)
+		if !ok {
+			return nil
+		}
+
+		if !rFileNamePattern.Match([]byte(filename)) {
+			return nil
+		}
+
+		fileList = append(fileList, string(data))
+		return nil
+	})
+
+	if len(fileList) == 0 {
+		return nil, nil
+	}
+
+	return []byte("[" + strings.Join(fileList, ",") + "]"), nil
 }

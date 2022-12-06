@@ -68,7 +68,7 @@ func ParseFlags() {
 	flag.StringVar(&Flags.HttpSock, "unix-sock", "", "If set, will listen to a UNIX socket at this location instead of a TCP socket")
 	flag.Int64Var(&Flags.MaxSize, "max-size", 0, "Maximum size of a single upload in bytes")
 	flag.StringVar(&Flags.UploadDir, "upload-dir", "./data", "Directory to store uploads in")
-	flag.StringVar(&Flags.Basepath, "base-path", "/files/", "Basepath of the HTTP server")
+	flag.StringVar(&Flags.Basepath, "base-path", "/api/file/", "base-path of the HTTP server")
 	flag.BoolVar(&Flags.ShowGreeting, "show-greeting", true, "Show the greeting message")
 	flag.BoolVar(&Flags.DisableDownload, "disable-download", false, "Disable the download endpoint")
 	flag.BoolVar(&Flags.DisableTermination, "disable-termination", false, "Disable the termination endpoint")

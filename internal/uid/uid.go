@@ -3,7 +3,6 @@ package uid
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"github.com/tus/tusd/pkg/handler"
 	"io"
 )
@@ -60,8 +59,9 @@ func FileID(info handler.FileInfo) string {
 	}
 
 	if errMsg != "" {
-		err := errors.New(errMsg)
-		panic(err)
+		//err := errors.New(errMsg)
+		//panic(err)
+		return Uid()
 	}
 
 	return checksum

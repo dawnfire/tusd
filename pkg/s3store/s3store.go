@@ -97,7 +97,7 @@ import (
 // considered valid into a header value according to RFC2616.
 var nonPrintableRegexp = regexp.MustCompile(`[^\x09\x20-\x7E]`)
 
-// See the handler.DataStore interface for documentation about the different
+// S3Store See the handler.DataStore interface for documentation about the different
 // methods.
 type S3Store struct {
 	// Bucket used to store the data in, e.g. "tusdstore.example.com"
@@ -157,6 +157,11 @@ type S3Store struct {
 	// CPU, so it might be desirable to disable them.
 	// Note that this property is experimental and might be removed in the future!
 	DisableContentHashes bool
+}
+
+func (store S3Store) Query(ctx context.Context, criteria string) (result []byte, err error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type S3API interface {
@@ -723,7 +728,7 @@ func (upload *s3Upload) concatUsingDownload(ctx context.Context, partialUploads 
 	uploadId, multipartId := splitIds(id)
 
 	// Create a temporary file for holding the concatenated data
-	file, err := ioutil.TempFile(store.TemporaryDirectory, "tusd-s3-concat-tmp-")
+	file, err := os.CreateTemp(store.TemporaryDirectory, "tusd-s3-concat-tmp-")
 	if err != nil {
 		return err
 	}

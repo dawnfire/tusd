@@ -2,11 +2,11 @@
 //
 // GCSStore is a storage backend that uses the GCSAPI interface in order to store uploads
 // on GCS. Uploads will be represented by two files in GCS; the data file will be stored
-// as an extensionless object [uid] and the JSON info file will stored as [uid].info.
+// as an extensionless object [uid] and the JSON info file will store as [uid].info.
 // In order to store uploads on GCS, make sure to specify the appropriate Google service
 // account file path in the GCS_SERVICE_ACCOUNT_FILE environment variable. Also make sure that
 // this service account file has the "https://www.googleapis.com/auth/devstorage.read_write"
-// scope enabled so you can read and write data to the storage buckets associated with the
+// scope enabled, so you can read and write data to the storage buckets associated with the
 // service account file.
 package gcsstore
 
@@ -26,7 +26,7 @@ import (
 	"github.com/tus/tusd/pkg/handler"
 )
 
-// See the handler.DataStore interface for documentation about the different
+// GCSStore See the handler.DataStore interface for documentation about the different
 // methods.
 type GCSStore struct {
 	// Specifies the GCS bucket that uploads will be stored in
@@ -40,6 +40,11 @@ type GCSStore struct {
 	// Service specifies an interface used to communicate with the Google
 	// cloud storage backend. Implementation can be seen in gcsservice file.
 	Service GCSAPI
+}
+
+func (store GCSStore) Query(ctx context.Context, criteria string) (result []byte, err error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // New constructs a new GCS storage backend using the supplied GCS bucket name

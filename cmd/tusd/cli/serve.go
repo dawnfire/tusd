@@ -16,10 +16,10 @@ const (
 	TLS12STRONG = "tls12-strong"
 )
 
-// Setups the different components, starts a Listener and give it to
+// Serve setups the different components, starts a Listener and give it to
 // http.Serve().
 //
-// By default it will bind to the specified host/port, unless a UNIX socket is
+// By default, it will bind to the specified host/port, unless a UNIX socket is
 // specified, in which case a different socket creation and binding mechanism
 // is put in place.
 func Serve() {
@@ -45,7 +45,7 @@ func Serve() {
 		stderr.Fatalf("Unable to create handler: %s", err)
 	}
 
-	basepath := Flags.Basepath
+	basePath := Flags.Basepath
 	address := ""
 
 	if Flags.HttpSock != "" {
@@ -56,7 +56,7 @@ func Serve() {
 		stdout.Printf("Using %s as address to listen.\n", address)
 	}
 
-	stdout.Printf("Using %s as the base path.\n", basepath)
+	stdout.Printf("Using %s as the base path.\n", basePath)
 
 	SetupPostHooks(handler)
 
@@ -67,19 +67,19 @@ func Serve() {
 
 	stdout.Printf("Supported tus extensions: %s\n", handler.SupportedExtensions())
 
-	if basepath == "/" {
-		// If the basepath is set to the root path, only install the tusd handler
+	if basePath == "/" {
+		// If the basePath is set to the root path, only install the tusd handler
 		// and do not show a greeting.
 		http.Handle("/", http.StripPrefix("/", handler))
 	} else {
-		// If a custom basepath is defined, we show a greeting at the root path...
+		// If a custom basePath is defined, we show a greeting at the root path...
 		if Flags.ShowGreeting {
 			http.Handle("/", http.FileServer(http.Dir("f/dist/")))
 		}
 
 		// ... and register a route with and without the trailing slash, so we can
 		// handle uploads for /files/ and /files, for example.
-		basepathWithoutSlash := strings.TrimSuffix(basepath, "/")
+		basepathWithoutSlash := strings.TrimSuffix(basePath, "/")
 		basepathWithSlash := basepathWithoutSlash + "/"
 
 		http.Handle(basepathWithSlash, http.StripPrefix(basepathWithSlash, handler))
@@ -105,7 +105,7 @@ func Serve() {
 	}
 
 	if Flags.HttpSock == "" {
-		stdout.Printf("You can now upload files to: %s://%s%s", protocol, address, basepath)
+		stdout.Printf("You can now upload files to: %s://%s%s", protocol, address, basePath)
 	}
 
 	// If we're not using TLS just start the server and, if http.Serve() returns, just return.
@@ -123,12 +123,12 @@ func Serve() {
 		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 
 	case TLS12:
-		// Ciphersuite selection comes from
+		// Cipher-suite selection comes from
 		// https://ssl-config.mozilla.org/#server=go&version=1.14.4&config=intermediate&guideline=5.6
 		// 128-bit AES modes remain as TLSv1.3 is enabled in this mode, and TLSv1.3 compatibility requires an AES-128 ciphersuite.
 		server.TLSConfig = &tls.Config{
-			MinVersion:               tls.VersionTLS12,
-			PreferServerCipherSuites: true,
+			MinVersion: tls.VersionTLS12,
+
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -140,7 +140,7 @@ func Serve() {
 		}
 
 	case TLS12STRONG:
-		// Ciphersuite selection as above, but intersected with
+		// Cipher-suite selection as above, but intersected with
 		// https://github.com/denji/golang-tls#perfect-ssl-labs-score-with-go
 		// TLSv1.3 is disabled as it requires an AES-128 ciphersuite.
 		server.TLSConfig = &tls.Config{

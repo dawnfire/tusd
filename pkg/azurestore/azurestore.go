@@ -20,6 +20,11 @@ type AzureStore struct {
 	Container    string
 }
 
+func (store AzureStore) Query(ctx context.Context, criteria string) (result []byte, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type AzUpload struct {
 	ID          string
 	InfoBlob    AzBlob

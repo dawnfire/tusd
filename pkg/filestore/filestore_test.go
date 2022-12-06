@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ var _ handler.LengthDeferrerDataStore = FileStore{}
 func TestFilestore(t *testing.T) {
 	a := assert.New(t)
 
-	tmp, err := ioutil.TempDir("", "tusd-filestore-")
+	tmp, err := os.MkdirTemp("", "tusd-filestore-")
 	a.NoError(err)
 
 	store := FileStore{tmp}
