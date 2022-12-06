@@ -18,6 +18,11 @@ type MockFullDataStore struct {
 	recorder *MockFullDataStoreMockRecorder
 }
 
+func (m *MockFullDataStore) Query(ctx context.Context, criteria string) (result []byte, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // MockFullDataStoreMockRecorder is the mock recorder for MockFullDataStore
 type MockFullDataStoreMockRecorder struct {
 	mock *MockFullDataStore

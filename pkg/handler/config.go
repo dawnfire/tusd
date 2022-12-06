@@ -14,43 +14,55 @@ type Config struct {
 	// set.
 	// TODO: Remove pointer?
 	StoreComposer *StoreComposer
+
 	// MaxSize defines how many bytes may be stored in one single upload. If its
 	// value is is 0 or smaller no limit will be enforced.
 	MaxSize int64
+
 	// BasePath defines the URL path used for handling uploads, e.g. "/files/".
 	// If no trailing slash is presented it will be added. You may specify an
 	// absolute URL containing a scheme, e.g. "http://tus.io"
 	BasePath string
-	isAbs    bool
+
+	isAbs bool
+
 	// DisableDownload indicates whether the server will refuse downloads of the
 	// uploaded file, by not mounting the GET handler.
 	DisableDownload bool
+
 	// DisableTermination indicates whether the server will refuse termination
 	// requests of the uploaded file, by not mounting the DELETE handler.
 	DisableTermination bool
+
 	// NotifyCompleteUploads indicates whether sending notifications about
 	// completed uploads using the CompleteUploads channel should be enabled.
 	NotifyCompleteUploads bool
+
 	// NotifyTerminatedUploads indicates whether sending notifications about
 	// terminated uploads using the TerminatedUploads channel should be enabled.
 	NotifyTerminatedUploads bool
+
 	// NotifyUploadProgress indicates whether sending notifications about
 	// the upload progress using the UploadProgress channel should be enabled.
 	NotifyUploadProgress bool
+
 	// NotifyCreatedUploads indicates whether sending notifications about
 	// the upload having been created using the CreatedUploads channel should be enabled.
 	NotifyCreatedUploads bool
+
 	// Logger is the logger to use internally, mostly for printing requests.
 	Logger *log.Logger
 	// Respect the X-Forwarded-Host, X-Forwarded-Proto and Forwarded headers
 	// potentially set by proxies when generating an absolute URL in the
 	// response to POST requests.
 	RespectForwardedHeaders bool
+
 	// PreUploadCreateCallback will be invoked before a new upload is created, if the
 	// property is supplied. If the callback returns nil, the upload will be created.
-	// Otherwise the HTTP request will be aborted. This can be used to implement
+	// Otherwise, the HTTP request will be aborted. This can be used to implement
 	// validation of upload metadata etc.
 	PreUploadCreateCallback func(hook HookEvent) error
+
 	// PreFinishResponseCallback will be invoked after an upload is completed but before
 	// a response is returned to the client. Error responses from the callback will be passed
 	// back to the client. This can be used to implement post-processing validation.

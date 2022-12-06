@@ -24,6 +24,9 @@ func NewHandler(config Config) (*Handler, error) {
 		return nil, err
 	}
 
+	config.PreUploadCreateCallback = PreUploadCreateCallback
+	config.PreFinishResponseCallback = PreFinishResponseCallback
+
 	handler, err := NewUnroutedHandler(config)
 	if err != nil {
 		return nil, err

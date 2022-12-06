@@ -21,7 +21,11 @@ export default {
       performance: 0.0,
     }
   },
-  mounted() { },
+  mounted() {
+    setTimeout(() => {
+      this.queryFiles();
+    }, 128);
+  },
   methods: {
     removeFile(fileID, fileName) {
       fetch(`${this.serveURL}/${fileID}`, {
@@ -256,7 +260,7 @@ export default {
     <div class="content-right center">content right</div>
     <div class="footer center">
       <div class="action-message center">this is message area</div>
-      <input class="dropzone-input-file" type="file" @change="uploadFiles" multiple />
+
     </div>
 
   </main>
