@@ -4,8 +4,8 @@ import (
 	"log"
 )
 
-func (h *UnroutedHandler) log(eventName string, details ...string) {
-	LogEvent(h.logger, eventName, details...)
+func (handler *UnroutedHandler) log(eventName string, details ...string) {
+	LogEvent(handler.logger, eventName, details...)
 }
 
 func LogEvent(logger *log.Logger, eventName string, details ...string) {

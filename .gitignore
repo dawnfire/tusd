@@ -6,3 +6,5 @@ node_modules/
 ./tusd
 tusd_*_*
 tusd
+go_*
+main

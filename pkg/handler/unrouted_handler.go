@@ -20,14 +20,14 @@ import (
 const UploadLengthDeferred = "1"
 
 var (
-	reExtractFileID  = regexp.MustCompile(`([^/]+)\/?$`)
+	reExtractFileID  = regexp.MustCompile(`([^/]+)/?$`)
 	reForwardedHost  = regexp.MustCompile(`host="?([^;"]+)`)
 	reForwardedProto = regexp.MustCompile(`proto=(https?)`)
-	reMimeType       = regexp.MustCompile(`^[a-z]+\/[a-z0-9\-\+\.]+$`)
+	reMimeType       = regexp.MustCompile(`^[a-z]+/[a-z0-9\-+.]+$`)
 )
 
 // HTTPError represents an error with an additional status code attached
-// which may be used when this error is sent in a HTTP response.
+// which may be used when this error is sent in an HTTP response.
 // See the net/http package for standardized status codes.
 type HTTPError interface {
 	error
@@ -82,7 +82,7 @@ var (
 type HTTPRequest struct {
 	// Method is the HTTP method, e.g. POST or PATCH
 	Method string
-	// URI is the full HTTP request URI, e.g. /files/fooo
+	// URI is the full HTTP request URI, e.g. /files/foo
 	URI string
 	// RemoteAddr contains the network address that sent the request
 	RemoteAddr string
@@ -113,7 +113,7 @@ func newHookEvent(info FileInfo, r *http.Request) HookEvent {
 }
 
 // UnroutedHandler exposes methods to handle requests as part of the tus protocol,
-// such as PostFile, HeadFile, PatchFile and DelFile. In addition the GetFile method
+// such as PostFile, HeadFile, PatchFile and DelFile. In additional the GetFile method
 // is provided which is, however, not part of the specification.
 type UnroutedHandler struct {
 	config        Config
@@ -138,8 +138,8 @@ type UnroutedHandler struct {
 	TerminatedUploads chan HookEvent
 	// UploadProgress is used to send notifications about the progress of the
 	// currently running uploads. For each open PATCH request, every second
-	// a HookEvent instance will be send over this channel with the Offset field
-	// being set to the number of bytes which have been transfered to the server.
+	// a HookEvent instance will send over this channel with the Offset field
+	// being set to the number of bytes which have been transferred to the server.
 	// Please be aware that this number may be higher than the number of bytes
 	// which have been stored by the data store! Sending to this channel will only
 	// happen if the NotifyUploadProgress field is set to true in the Config
@@ -164,7 +164,7 @@ func NewUnroutedHandler(config Config) (*UnroutedHandler, error) {
 		return nil, err
 	}
 
-	// Only promote extesions using the Tus-Extension header which are implemented
+	// Only promote extensions using the Tus-Extension header which are implemented
 	extensions := "creation,creation-with-upload"
 	if config.StoreComposer.UsesTerminater {
 		extensions += ",termination"
@@ -382,18 +382,22 @@ func (handler *UnroutedHandler) PostFile(w http.ResponseWriter, r *http.Request)
 	// checksum
 	if handler.config.StoreComposer.UsesChecksum {
 		checksumableUpload := handler.composer.Checksum.AsChecksumableUpload(upload)
-		checksumableUpload.Checksum(ctx, w, r)
+		err = checksumableUpload.Checksum(ctx, w, r)
+		if err != nil {
+			handler.sendError(w, r, err)
+			return
+		}
 	}
 
 	id := info.ID
 
 	// Add the Location header directly after creating the new resource to even
 	// include it in cases of failure when an error is returned
-	url := handler.absFileURL(r, id)
-	w.Header().Set("Location", url)
+	absFileURL := handler.absFileURL(r, id)
+	w.Header().Set("Location", absFileURL)
 
 	handler.Metrics.incUploadsCreated()
-	handler.log("UploadCreated", "id", id, "size", i64toa(size), "url", url)
+	handler.log("UploadCreated", "id", id, "size", i64toa(size), "url", absFileURL)
 
 	if handler.config.NotifyCreatedUploads {
 		handler.CreatedUploads <- newHookEvent(info, r)
@@ -420,7 +424,7 @@ func (handler *UnroutedHandler) PostFile(w http.ResponseWriter, r *http.Request)
 				return
 			}
 
-			defer lock.Unlock()
+			defer func() { _ = lock.Unlock() }()
 		}
 
 		if err := handler.writeChunk(ctx, upload, info, w, r); err != nil {
@@ -457,7 +461,7 @@ func (handler *UnroutedHandler) HeadFile(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		defer lock.Unlock()
+		defer func() { _ = lock.Unlock() }()
 	}
 
 	upload, err := handler.composer.Core.GetUpload(ctx, id)
@@ -535,7 +539,7 @@ func (handler *UnroutedHandler) PatchFile(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		defer lock.Unlock()
+		defer func() { _ = lock.Unlock() }()
 	}
 
 	upload, err := handler.composer.Core.GetUpload(ctx, id)
@@ -616,7 +620,7 @@ func (handler *UnroutedHandler) writeChunk(ctx context.Context, upload Upload, i
 	}
 
 	maxSize := info.Size - offset
-	// If the upload's length is deferred and the PATCH request does not contain the Content-Length
+	// If the uploads length is deferred and the PATCH request does not contain the Content-Length
 	// header (which is allowed if 'Transfer-Encoding: chunked' is used), we still need to set limits for
 	// the body size.
 	if info.SizeIsDeferred {
@@ -646,7 +650,7 @@ func (handler *UnroutedHandler) writeChunk(ctx context.Context, upload Upload, i
 		uploadCtx, stopUpload := context.WithCancel(context.Background())
 		info.stopUpload = stopUpload
 		// terminateUpload specifies whether the upload should be deleted after
-		// the write has finished
+		// the write action has finished
 		terminateUpload := false
 		// Cancel the context when the function exits to ensure that the goroutine
 		// is properly cleaned up
@@ -656,7 +660,7 @@ func (handler *UnroutedHandler) writeChunk(ctx context.Context, upload Upload, i
 			// Interrupt the Read() call from the request body
 			<-uploadCtx.Done()
 			terminateUpload = true
-			r.Body.Close()
+			func() { _ = r.Body.Close() }()
 		}()
 
 		if handler.config.NotifyUploadProgress {
@@ -751,7 +755,7 @@ func (handler *UnroutedHandler) GetFile(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		defer lock.Unlock()
+		defer func() { _ = lock.Unlock() }()
 	}
 
 	upload, err := handler.composer.Core.GetUpload(ctx, id)
@@ -789,52 +793,52 @@ func (handler *UnroutedHandler) GetFile(w http.ResponseWriter, r *http.Request) 
 	}
 
 	handler.sendResp(w, r, http.StatusOK)
-	io.Copy(w, src)
+	_, _ = io.Copy(w, src)
 
 	// Try to close the reader if the io.Closer interface is implemented
 	if closer, ok := src.(io.Closer); ok {
-		closer.Close()
+		_ = closer.Close()
 	}
 }
 
 // mimeInlineBrowserWhitelist is a map containing MIME types which should be
 // allowed to be rendered by browser inline, instead of being forced to be
 // downloaded. For example, HTML or SVG files are not allowed, since they may
-// contain malicious JavaScript. In a similiar fashion PDF is not on this list
+// contain malicious JavaScript. In a similar fashion PDF is not on this list
 // as their parsers commonly contain vulnerabilities which can be exploited.
 // The values of this map does not convey any meaning and are therefore just
 // empty structs.
 var mimeInlineBrowserWhitelist = map[string]struct{}{
-	"text/plain": struct{}{},
+	"text/plain": {},
 
-	"image/png":  struct{}{},
-	"image/jpeg": struct{}{},
-	"image/gif":  struct{}{},
-	"image/bmp":  struct{}{},
-	"image/webp": struct{}{},
+	"image/png":  {},
+	"image/jpeg": {},
+	"image/gif":  {},
+	"image/bmp":  {},
+	"image/webp": {},
 
-	"audio/wave":      struct{}{},
-	"audio/wav":       struct{}{},
-	"audio/x-wav":     struct{}{},
-	"audio/x-pn-wav":  struct{}{},
-	"audio/webm":      struct{}{},
-	"video/webm":      struct{}{},
-	"audio/ogg":       struct{}{},
-	"video/ogg":       struct{}{},
-	"application/ogg": struct{}{},
+	"audio/wave":      {},
+	"audio/wav":       {},
+	"audio/x-wav":     {},
+	"audio/x-pn-wav":  {},
+	"audio/webm":      {},
+	"video/webm":      {},
+	"audio/ogg":       {},
+	"video/ogg":       {},
+	"application/ogg": {},
 }
 
 // filterContentType returns the values for the Content-Type and
 // Content-Disposition headers for a given upload. These values should be used
 // in responses for GET requests to ensure that only non-malicious file types
 // are shown directly in the browser. It will extract the file name and type
-// from the "fileame" and "filetype".
+// from the "filename" and "filetype".
 // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
 func filterContentType(info FileInfo) (contentType string, contentDisposition string) {
 	filetype := info.MetaData["filetype"]
 
 	if reMimeType.MatchString(filetype) {
-		// If the filetype from metadata is well formed, we forward use this
+		// If the filetype from metadata is well-formed, we forward use this
 		// for the Content-Type header. However, only whitelisted mime types
 		// will be allowed to be shown inline in the browser
 		contentType = filetype
@@ -844,7 +848,7 @@ func filterContentType(info FileInfo) (contentType string, contentDisposition st
 			contentDisposition = "attachment"
 		}
 	} else {
-		// If the filetype from the metadata is not well formed, we use a
+		// If the filetype from the metadata is not well-formed, we use a
 		// default type and force the browser to download the content.
 		contentType = "application/octet-stream"
 		contentDisposition = "attachment"
@@ -881,7 +885,7 @@ func (handler *UnroutedHandler) DelFile(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		defer lock.Unlock()
+		defer func() { _ = lock.Unlock() }()
 	}
 
 	upload, err := handler.composer.Core.GetUpload(ctx, id)
@@ -909,9 +913,9 @@ func (handler *UnroutedHandler) DelFile(w http.ResponseWriter, r *http.Request) 
 }
 
 // terminateUpload passes a given upload to the DataStore's Terminater,
-// send the corresponding upload info on the TerminatedUploads channnel
+// send the corresponding upload info on the TerminatedUploads channel
 // and updates the statistics.
-// Note the the info argument is only needed if the terminated uploads
+// Note the info argument is only needed if the terminated uploads
 // notifications are enabled.
 func (handler *UnroutedHandler) terminateUpload(ctx context.Context, upload Upload, info FileInfo, r *http.Request) error {
 	terminatableUpload := handler.composer.Terminater.AsTerminatableUpload(upload)
@@ -941,7 +945,7 @@ func (handler *UnroutedHandler) sendError(w http.ResponseWriter, r *http.Request
 		err = errReadTimeout
 	}
 
-	// Errors for connnection resets also contain TCP details, we don't need, e.g:
+	// Errors for connection resets also contain TCP details, we don't need, e.g:
 	// read tcp 127.0.0.1:1080->127.0.0.1:10023: read: connection reset by peer
 	// Therefore, we also trim those down.
 	if strings.HasSuffix(err.Error(), "read: connection reset by peer") {
@@ -961,7 +965,7 @@ func (handler *UnroutedHandler) sendError(w http.ResponseWriter, r *http.Request
 	// In some cases, the HTTP connection gets reset by the other peer. This is not
 	// necessarily the tus client but can also be a proxy in front of tusd, e.g. HAProxy 2
 	// is known to reset the connection to tusd, when the tus client closes the connection.
-	// To avoid erroring out in this case and loosing the uploaded data, we can ignore
+	// To avoid error out in this case and loosing the uploaded data, we can ignore
 	// the error here without causing harm.
 	//if strings.Contains(err.Error(), "read: connection reset by peer") {
 	//	err = nil
@@ -980,7 +984,7 @@ func (handler *UnroutedHandler) sendError(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Length", strconv.Itoa(len(reason)))
 	w.WriteHeader(statusErr.StatusCode())
-	w.Write(reason)
+	_, _ = w.Write(reason)
 
 	handler.log("ResponseOutgoing", "status", strconv.Itoa(statusErr.StatusCode()), "method", r.Method, "path", r.URL.Path, "error", err.Error(), "requestId", getRequestId(r))
 
@@ -1004,13 +1008,11 @@ func (handler *UnroutedHandler) absFileURL(r *http.Request, id string) string {
 	// Read origin and protocol from request
 	host, proto := getHostAndProtocol(r, handler.config.RespectForwardedHeaders)
 
-	url := proto + "://" + host + handler.basePath + id
-
-	return url
+	return proto + "://" + host + handler.basePath + id
 }
 
 // sendProgressMessage will send a notification over the UploadProgress channel
-// every second, indicating how much data has been transfered to the server.
+// every second, indicating how much data has been transferred to the server.
 // It will stop sending these instances once the returned channel has been
 // closed.
 func (handler *UnroutedHandler) sendProgressMessages(hook HookEvent, reader *bodyReader) chan<- struct{} {
@@ -1134,7 +1136,7 @@ func (handler *UnroutedHandler) validateNewUploadLengthHeaders(uploadLengthHeade
 }
 
 // lockUpload creates a new lock for the given upload ID and attempts to lock it.
-// The created lock is returned if it was aquired successfully.
+// The created lock is returned if it was acquired successfully.
 func (handler *UnroutedHandler) lockUpload(id string) (Lock, error) {
 	lock, err := handler.composer.Locker.NewLock(id)
 	if err != nil {
