@@ -6,14 +6,20 @@ package handler
 type StoreComposer struct {
 	Core DataStore
 
-	UsesTerminater     bool
-	Terminater         TerminaterDataStore
-	UsesLocker         bool
-	Locker             Locker
-	UsesConcater       bool
-	Concater           ConcaterDataStore
+	UsesTerminater bool
+	Terminater     TerminaterDataStore
+
+	UsesLocker bool
+	Locker     Locker
+
+	UsesConcater bool
+	Concater     ConcaterDataStore
+
 	UsesLengthDeferrer bool
 	LengthDeferrer     LengthDeferrerDataStore
+
+	UsesChecksum bool
+	Checksum     ChecksumDataStore
 }
 
 // NewStoreComposer creates a new and empty store composer.
@@ -64,6 +70,11 @@ func (store *StoreComposer) Capabilities() string {
 // property will be unset.
 func (store *StoreComposer) UseCore(core DataStore) {
 	store.Core = core
+}
+
+func (store *StoreComposer) UseChecksum(ext ChecksumDataStore) {
+	store.UsesChecksum = ext != nil
+	store.Checksum = ext
 }
 
 func (store *StoreComposer) UseTerminater(ext TerminaterDataStore) {

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"io"
+	"net/http"
 )
 
 type MetaData map[string]string
@@ -48,7 +49,7 @@ func (f FileInfo) StopUpload() {
 }
 
 type Upload interface {
-	// Write the chunk read from src into the file specified by the id at the
+	//WriteChunk Write the chunk read from src into the file specified by the id at the
 	// given offset. The handler will take care of validating the offset and
 	// limiting the size of the src to not overflow the file's size. It may
 	// return an os.ErrNotExist which will be interpreted as a 404 Not Found.
@@ -56,7 +57,7 @@ type Upload interface {
 	// write happens per time.
 	// The function call must return the number of bytes written.
 	WriteChunk(ctx context.Context, offset int64, src io.Reader) (int64, error)
-	// Read the fileinformation used to validate the offset and respond to HEAD
+	//GetInfo Read the fileinformation used to validate the offset and respond to HEAD
 	// requests. It may return an os.ErrNotExist which will be interpreted as a
 	// 404 Not Found.
 	GetInfo(ctx context.Context) (FileInfo, error)
@@ -68,7 +69,7 @@ type Upload interface {
 	// If the given upload could not be found, the error tusd.ErrNotFound should
 	// be returned.
 	GetReader(ctx context.Context) (io.Reader, error)
-	// FinisherDataStore is the interface which can be implemented by DataStores
+	//FinishUpload FinisherDataStore is the interface which can be implemented by DataStores
 	// which need to do additional operations once an entire upload has been
 	// completed. These tasks may include but are not limited to freeing unused
 	// resources or notifying other services. For example, S3Store uses this
@@ -79,13 +80,23 @@ type Upload interface {
 }
 
 type DataStore interface {
-	// Create a new upload using the size as the file's length. The method must
+	//NewUpload Create a new upload using the size as the file's length. The method must
 	// return an unique id which is used to identify the upload. If no backend
 	// (e.g. Riak) specifes the id you may want to use the uid package to
 	// generate one. The properties Size and MetaData will be filled.
 	NewUpload(ctx context.Context, info FileInfo) (upload Upload, err error)
 
 	GetUpload(ctx context.Context, id string) (upload Upload, err error)
+}
+
+type ChecksumableUpload interface {
+	// Checksum .
+	Checksum(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+}
+
+// ChecksumDataStore .
+type ChecksumDataStore interface {
+	AsChecksumableUpload(upload Upload) ChecksumableUpload
 }
 
 type TerminatableUpload interface {
@@ -148,7 +159,7 @@ type Lock interface {
 	// by its id.
 	// If this operation fails because the resource is already locked, the
 	// tusd.ErrFileLocked must be returned. If no error is returned, the attempt
-	// is consider to be successful and the upload to be locked until UnlockUpload
+	// is considered to be successful and the upload to be locked until UnlockUpload
 	// is invoked for the same upload.
 	Lock() error
 	// Unlock releases an existing lock for the given upload.

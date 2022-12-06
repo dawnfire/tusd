@@ -43,7 +43,7 @@ func (store AzureStore) UseIn(composer *handler.StoreComposer) {
 
 func (store AzureStore) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
 	if info.ID == "" {
-		info.ID = uid.Uid()
+		info.ID = uid.FileID(info)
 	}
 
 	if info.Size > MaxBlockBlobSize {

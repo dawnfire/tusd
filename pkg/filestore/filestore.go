@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -23,7 +24,7 @@ import (
 
 var defaultFilePerm = os.FileMode(0664)
 
-// See the handler.DataStore interface for documentation about the different
+// FileStore See the handler.DataStore interface for documentation about the different
 // methods.
 type FileStore struct {
 	// Relative or absolute path to store files in. FileStore does not check
@@ -46,11 +47,12 @@ func (store FileStore) UseIn(composer *handler.StoreComposer) {
 	composer.UseTerminater(store)
 	composer.UseConcater(store)
 	composer.UseLengthDeferrer(store)
+	composer.UseChecksum(store)
 }
 
 func (store FileStore) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
-	if info.ID == "" { 
-		info.ID = uid.Uid()
+	if info.ID == "" {
+		info.ID = uid.FileID(info)
 	}
 	binPath := store.binPath(info.ID)
 	info.Storage = map[string]string{
@@ -120,6 +122,10 @@ func (store FileStore) GetUpload(ctx context.Context, id string) (handler.Upload
 	}, nil
 }
 
+func (store FileStore) AsChecksumableUpload(upload handler.Upload) handler.ChecksumableUpload {
+	return upload.(*fileUpload)
+}
+
 func (store FileStore) AsTerminatableUpload(upload handler.Upload) handler.TerminatableUpload {
 	return upload.(*fileUpload)
 }
@@ -172,6 +178,20 @@ func (upload *fileUpload) GetReader(ctx context.Context) (io.Reader, error) {
 	return os.Open(upload.binPath)
 }
 
+func (upload *fileUpload) Checksum(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	v := r.Header.Get("Upload-Checksum")
+	fmt.Println(v)
+	//Upload-Checksum
+	//upload.
+	//if err := os.Remove(upload.infoPath); err != nil {
+	//	return err
+	//}
+	//if err := os.Remove(upload.binPath); err != nil {
+	//	return err
+	//}
+	return nil
+}
+
 func (upload *fileUpload) Terminate(ctx context.Context) error {
 	if err := os.Remove(upload.infoPath); err != nil {
 		return err
@@ -217,7 +237,7 @@ func (upload *fileUpload) writeInfo() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(upload.infoPath, data, defaultFilePerm)
+	return os.WriteFile(upload.infoPath, data, defaultFilePerm)
 }
 
 func (upload *fileUpload) FinishUpload(ctx context.Context) error {

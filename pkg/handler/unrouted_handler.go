@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -70,6 +72,7 @@ var (
 	ErrUploadLengthAndUploadDeferLength = NewHTTPError(errors.New("provided both Upload-Length and Upload-Defer-Length"), http.StatusBadRequest)
 	ErrInvalidUploadDeferLength         = NewHTTPError(errors.New("invalid Upload-Defer-Length header"), http.StatusBadRequest)
 	ErrUploadStoppedByServer            = NewHTTPError(errors.New("upload has been stopped by server"), http.StatusBadRequest)
+	ErrChecksumMismatch                 = NewHTTPError(errors.New("checksum mismatch"), 460)
 
 	errReadTimeout     = errors.New("read tcp: i/o timeout")
 	errConnectionReset = errors.New("read tcp: connection reset by peer")
@@ -172,6 +175,9 @@ func NewUnroutedHandler(config Config) (*UnroutedHandler, error) {
 	if config.StoreComposer.UsesLengthDeferrer {
 		extensions += ",creation-defer-length"
 	}
+	if config.StoreComposer.UsesChecksum {
+		extensions += ",checksum,checksum-trailer"
+	}
 
 	handler := &UnroutedHandler{
 		config:            config,
@@ -257,6 +263,9 @@ func (handler *UnroutedHandler) Middleware(h http.Handler) http.Handler {
 			header.Set("Tus-Version", "1.0.0")
 			header.Set("Tus-Extension", handler.extensions)
 
+			if handler.config.StoreComposer.UsesChecksum {
+				header.Set("Tus-Checksum-Algorithm", "sha1,md5")
+			}
 			// Although the 204 No Content status code is a better fit in this case,
 			// since we do not have a response body included, we cannot use it here
 			// as some browsers only accept 200 OK as successful response to a
@@ -368,6 +377,12 @@ func (handler *UnroutedHandler) PostFile(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		handler.sendError(w, r, err)
 		return
+	}
+
+	// checksum
+	if handler.config.StoreComposer.UsesChecksum {
+		checksumableUpload := handler.composer.Checksum.AsChecksumableUpload(upload)
+		checksumableUpload.Checksum(ctx, w, r)
 	}
 
 	id := info.ID
@@ -754,9 +769,12 @@ func (handler *UnroutedHandler) GetFile(w http.ResponseWriter, r *http.Request) 
 	// Set headers before sending responses
 	w.Header().Set("Content-Length", strconv.FormatInt(info.Offset, 10))
 
-	contentType, contentDisposition := filterContentType(info)
+	contentType, _ := filterContentType(info)
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", contentDisposition)
+
+	filename := url.QueryEscape(info.MetaData["filename"])
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf("inline; filename=%s", filename))
 
 	// If no data has been uploaded yet, respond with an empty "204 No Content" status.
 	if info.Offset == 0 {
