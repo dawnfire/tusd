@@ -403,8 +403,11 @@ main {
         right: 0;
         bottom: 0;
         left: 0;
-
+        // border: 1px solid red;
         cursor: pointer;
+
+        // height: 100%;
+        width: 98%;
       }
     }
   }
