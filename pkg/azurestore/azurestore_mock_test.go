@@ -6,8 +6,8 @@ package azurestore_test
 
 import (
 	context "context"
+	azurestore "github.com/dawnfire/tusd/pkg/azurestore"
 	gomock "github.com/golang/mock/gomock"
-	azurestore "github.com/tus/tusd/pkg/azurestore"
 	io "io"
 	reflect "reflect"
 )

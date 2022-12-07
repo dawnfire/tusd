@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/dawnfire/tusd/pkg/handler"
+	pb "github.com/dawnfire/tusd/pkg/proto/v1"
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"github.com/tus/tusd/pkg/handler"
-	pb "github.com/tus/tusd/pkg/proto/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )

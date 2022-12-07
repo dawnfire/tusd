@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"github.com/tus/tusd/cmd/tusd/cli/hooks"
+	"github.com/dawnfire/tusd/cmd/tusd/cli/hooks"
 	"log"
 	"os"
 	"path/filepath"

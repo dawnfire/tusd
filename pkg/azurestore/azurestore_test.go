@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/dawnfire/tusd/pkg/azurestore"
+	"github.com/dawnfire/tusd/pkg/handler"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"github.com/tus/tusd/pkg/azurestore"
-	"github.com/tus/tusd/pkg/handler"
 )
 
 //go:generate mockgen -destination=./azurestore_mock_test.go -package=azurestore_test github.com/tus/tusd/pkg/azurestore AzService,AzBlob

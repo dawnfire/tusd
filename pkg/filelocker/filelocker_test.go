@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/dawnfire/tusd/pkg/handler"
 	"github.com/stretchr/testify/assert"
-	"github.com/tus/tusd/pkg/handler"
 )
 
 var _ handler.Locker = &FileLocker{}

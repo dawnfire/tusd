@@ -3,7 +3,7 @@ package uid
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/tus/tusd/pkg/handler"
+	"github.com/dawnfire/tusd/pkg/handler"
 	"io"
 )
 

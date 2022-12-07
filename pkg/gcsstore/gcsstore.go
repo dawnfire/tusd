@@ -22,8 +22,8 @@ import (
 	"sync/atomic"
 
 	"cloud.google.com/go/storage"
-	"github.com/tus/tusd/internal/uid"
-	"github.com/tus/tusd/pkg/handler"
+	"github.com/dawnfire/tusd/internal/uid"
+	"github.com/dawnfire/tusd/pkg/handler"
 )
 
 // GCSStore See the handler.DataStore interface for documentation about the different

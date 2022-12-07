@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dawnfire/tusd/pkg/handler"
 	"github.com/golang/mock/gomock"
-	"github.com/tus/tusd/pkg/handler"
 )
 
 //go:generate mockgen -package handler_test -source utils_test.go -aux_files handler=datastore.go -destination=handler_mock_test.go

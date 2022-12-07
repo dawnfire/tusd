@@ -10,8 +10,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/tus/tusd/internal/uid"
-	"github.com/tus/tusd/pkg/handler"
+	"github.com/dawnfire/tusd/internal/uid"
+	"github.com/dawnfire/tusd/pkg/handler"
 )
 
 type AzureStore struct {
