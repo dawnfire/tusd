@@ -1,8 +1,18 @@
 <script>
+/* using for minimap
+  ===============================================================================    
+                                               .o8            
+                                              "888            
+                      .ooooo.   .ooooo.   .oooo888   .ooooo.  
+                      d88' `"Y8 d88' `88b d88' `888  d88' `88b 
+                      888       888   888 888   888  888ooo888 
+                      888   .o8 888   888 888   888  888    .o 
+                      `Y8bod8P' `Y8bod8P' `Y8bod88P" `Y8bod8P'        
 
+  ===============================================================================
+ */
 import * as tus from 'tus-js-client';
 import forge from 'node-forge';
-
 
 export default {
   props: {
@@ -22,6 +32,7 @@ export default {
     }
   },
   mounted() {
+    this.$message.info('mounted');
     setTimeout(() => {
       this.queryFiles();
     }, 128);
@@ -34,19 +45,19 @@ export default {
           'Tus-Resumable': '1.0.0'
         }
       }).then(v => {
-        console.log(v.status);
+
         if (v.status !== 204) {
-          console.log('delete failed');
+          this.$message.error('delete failed');
           return;
         }
-        console.log(`成功删除${fileName}`);
-        let idx = this.transmitted.findIndex(e => e.full.ID === fileID);
+        this.$message.success(`成功删除${fileName}`);
+        let idx = this.transmitted.findIndex(e => e.checksum === fileID);
         if (idx < 0) {
-          console.log(`find ${fileName} failed`);
+          this.$message.error(`find ${fileName} failed`);
           return;
         }
         this.transmitted.splice(idx, 1);
-      }).catch(err => console.log(err));
+      }).catch(err => this.$message.error(err));
     },
     queryFiles() {
       let v = encodeURIComponent(this.criteria);
@@ -59,7 +70,7 @@ export default {
         return v.json();
       }).then(v => {
         if (!v || v.length == 0) {
-          console.log('empty file list');
+          this.$message.warning('empty file list');
           return;
         }
 
@@ -84,7 +95,7 @@ export default {
         }
         this.transmitted = d;
       }).catch(err => {
-        console.log(err);
+        this.$message.error(err);
       });
     },
     digest(file) {
@@ -98,7 +109,7 @@ export default {
         fileReader.onload = (e) => {
           if (!e || !e.target || !e.target.result) {
             let err = new Error('invalid event.target.result');
-            console.log(err.message);
+            this.$message.error(err.message);
             return;
           }
 
@@ -116,7 +127,7 @@ export default {
 
           this.progress = ((read * 1.0) / fileSize * 100).toFixed(2);
           if (read >= fileSize) {
-            console.log(`read completed: ${read}, fileSize: ${fileSize}`);
+            this.$message.info(`read completed: ${read}, fileSize: ${fileSize}`);
             resolve(md.digest().toHex());
             return;
           }
@@ -138,7 +149,7 @@ export default {
         if (!files || files.length == 0) {
           let errMsg = 'invalid files';
           let err = new Error(errMsg);
-          console.log(err.message);
+          this.$message.error(err.message);
           reject(err);
           return;
         }
@@ -148,7 +159,7 @@ export default {
           let f = files[i];
           if (!f.name || !f.size) {
             let err = new Error(`invalid files[${i}]`);
-            console.log(err.message);
+            this.$message.error(err.message);
             reject(err);
             return;
           }
@@ -166,12 +177,13 @@ export default {
               endpoint: this.serveURL,
               metadata,
               onError: (err) => {
-                console.log(err);
+                this.$message.error(err);
                 reject(err);
               },
               onAfterResponse: (req, resp) => { },
               onSuccess: () => {
                 metadata.url = upload.url;
+                metadata.full = { ID: metadata.checksum };
                 transmitted.push(metadata);
                 if (transmitted.length !== files.length) {
                   return;
@@ -180,7 +192,7 @@ export default {
                 resolve(transmitted);
               },
               onProgress: (bytesUploaded, bytesTotal) => {
-                console.log(`${bytesUploaded}/${bytesTotal}`)
+                // this.$message.info(`${bytesUploaded}/${bytesTotal}`)
               },
             });
 
@@ -195,7 +207,7 @@ export default {
               upload.start()
             });
           }).catch(err => {
-            console.log(err);
+            this.$message.error(err);
             reject(err);
           });
         }
@@ -204,15 +216,14 @@ export default {
 
     uploadFiles(e) {
       if (!e.target.files || !(e.target.files[0])) {
-        console.log('no file(s) selected');
+        this.$message.warning('no file(s) selected');
         return;
       }
 
       this.transport(e.target.files).then(v => {
         this.transmitted = v;
-        console.log(v);
       }).catch(err => {
-        console.log(err);
+        this.$message.error(err);
       });
     }
   }
@@ -220,15 +231,33 @@ export default {
 </script>
 
 <template>
+  <!-- using for minimap
+      http://patorjk.com/software/taag/#p=display&f=Roman&t=code
+  
+                            .                                          oooo                .             
+                          .o8                                          `888              .o8             
+                        .o888oo  .ooooo.  ooo. .oo.  .oo.   oo.ooooo.   888   .oooo.   .o888oo  .ooooo.  
+                          888   d88' `88b `888P"Y88bP"Y88b   888' `88b  888  `P  )88b    888   d88' `88b 
+                          888   888ooo888  888   888   888   888   888  888   .oP"888    888   888ooo888 
+                          888 . 888    .o  888   888   888   888   888  888  d8(  888    888 . 888    .o 
+                          "888" `Y8bod8P' o888o o888o o888o  888bod8P' o888o `Y888""8o   "888" `Y8bod8P' 
+                                                            888                                         
+                                                            o888o                                        
+    ============================================================================================================
+  
+
+
+    -->
   <main>
 
-    <div class="header-left center">header left</div>
+    <div class="header-left center">
+
+    </div>
     <div class="header-middle title center">{{ title }}</div>
     <div class="header-right status center">local: {{ progress }}%, {{ performance.toFixed(2) }}MB</div>
     <div class="content-left  center">content left</div>
     <div class="content center">
-
-      <div>
+      <div class="filter">
         <input v-model="criteria" />
         <button @click="queryFiles">查看文件</button>
       </div>
@@ -236,7 +265,6 @@ export default {
         @dragleave="() => { dragover = false; dropped = false; }"
         @drop="() => { dragover = false; }"
         @dragover="() => { dragover = true }">
-
         <div class="hint">
           <div>请拖放文件</div>
           <div>或点击此处</div>
@@ -247,10 +275,10 @@ export default {
         <ul>
           <li v-for="file in transmitted" :key="file.checksum">
             <div class="file-panel">
-              <div class="name"><a :href="file.url"> {{ file.filename }}</a></div>
-              <div class="size">{{ file.full.Size }}</div>
+              <div class="name"><a :href="file.url" target="_blank"> {{ file.filename }}</a></div>
+              <div class="size">{{ file.filesize }}</div>
               <div class="btn-wrapper resume"><button>续传</button></div>
-              <div class="btn-wrapper delete"><button @click="removeFile(file.full.ID)">删除</button></div>
+              <div class="btn-wrapper delete"><button @click="removeFile(file.checksum)">删除</button></div>
             </div>
           </li>
         </ul>
@@ -267,6 +295,19 @@ export default {
 </template>
 
 <style lang="scss" scoped>
+/* using for minimap
+  ===============================================================================    
+                                  .               oooo            
+                                .o8               `888            
+                      .oooo.o .o888oo oooo    ooo  888   .ooooo.  
+                      d88(  "8   888    `88.  .8'   888  d88' `88b 
+                      `"Y88b.    888     `88..8'    888  888ooo888 
+                      o.  )88b   888 .    `888'     888  888    .o 
+                      8oo888P'   "888"     .8'     o888o `Y8bod8P' 
+                                      .o..P'                      
+                                      `Y8P'      
+  ===============================================================================                                      
+*/
 main {
   display: grid;
   grid-template-rows: 3em auto 3em;
@@ -275,10 +316,10 @@ main {
   height: calc(100vh - 1.8em);
   width: calc(100vw - 1.8em);
 
-
   .header-left {
     grid-row: 1 / 1;
     grid-column: 1 / 1;
+    border: 1px solid red;
     visibility: hidden;
   }
 
@@ -324,6 +365,10 @@ main {
     margin: 0 auto;
 
     box-shadow: 0px 2.292px 3.225px -1.458px rgba(0, 0, 0, 0.2), 0px 5px 7.915px 0.625px rgba(0, 0, 0, 0.14), 0px 1.875px 9.580px 1.666px rgba(0, 0, 0, 0.12);
+
+    .filter {
+      padding-bottom: 1em;
+    }
 
     .uploaded-list {
       ul {

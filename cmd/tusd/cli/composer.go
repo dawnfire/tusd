@@ -22,9 +22,14 @@ import (
 var Composer *handler.StoreComposer
 
 func CreateComposer() {
+	defer func() {
+		stdout.Printf("Using %.2fMB as maximum size.\n", float64(Flags.MaxSize)/1024/1024)
+	}()
+
 	// Attempt to use S3 as a backend if the -s3-bucket option has been supplied.
 	// If not, we default to storing them locally on disk.
 	Composer = handler.NewStoreComposer()
+
 	if Flags.S3Bucket != "" {
 		s3Config := aws.NewConfig()
 
@@ -67,7 +72,10 @@ func CreateComposer() {
 
 		locker := memorylocker.New()
 		locker.UseIn(Composer)
-	} else if Flags.GCSBucket != "" {
+		return
+	}
+
+	if Flags.GCSBucket != "" {
 		if Flags.GCSObjectPrefix != "" && strings.Contains(Flags.GCSObjectPrefix, "_") {
 			stderr.Fatalf("gcs-object-prefix value (%s) can't contain underscore. "+
 				"Please remove underscore from the value", Flags.GCSObjectPrefix)
@@ -93,8 +101,10 @@ func CreateComposer() {
 
 		locker := memorylocker.New()
 		locker.UseIn(Composer)
-	} else if Flags.AzStorage != "" {
+		return
+	}
 
+	if Flags.AzStorage != "" {
 		accountName := os.Getenv("AZURE_STORAGE_ACCOUNT")
 		if accountName == "" {
 			stderr.Fatalf("No service account name for Azure BlockBlob Storage using the AZURE_STORAGE_ACCOUNT environment variable.\n")
@@ -137,23 +147,22 @@ func CreateComposer() {
 
 		locker := memorylocker.New()
 		locker.UseIn(Composer)
-	} else {
-		dir, err := filepath.Abs(Flags.UploadDir)
-		if err != nil {
-			stderr.Fatalf("Unable to make absolute path: %s", err)
-		}
-
-		stdout.Printf("Using '%s' as directory storage.\n", dir)
-		if err := os.MkdirAll(dir, os.FileMode(0774)); err != nil {
-			stderr.Fatalf("Unable to ensure directory exists: %s", err)
-		}
-
-		store := filestore.New(dir)
-		store.UseIn(Composer)
-
-		locker := filelocker.New(dir)
-		locker.UseIn(Composer)
+		return
 	}
 
-	stdout.Printf("Using %.2fMB as maximum size.\n", float64(Flags.MaxSize)/1024/1024)
+	dir, err := filepath.Abs(Flags.UploadDir)
+	if err != nil {
+		stderr.Fatalf("Unable to make absolute path: %s", err)
+	}
+
+	stdout.Printf("Using '%s' as directory storage.\n", dir)
+	if err := os.MkdirAll(dir, os.FileMode(0774)); err != nil {
+		stderr.Fatalf("Unable to ensure directory exists: %s", err)
+	}
+
+	store := filestore.New(dir)
+	store.UseIn(Composer)
+
+	locker := filelocker.New(dir)
+	locker.UseIn(Composer)
 }

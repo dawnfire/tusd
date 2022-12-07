@@ -1,14 +1,19 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
 
-import App from './App.vue'
-import router from './router'
+import 'ant-design-vue/dist/antd.css';
+import { Button, message, Input } from 'ant-design-vue';
 
-import './assets/main.css'
+import App from './App.vue';
+import router from './router';
 
-const app = createApp(App)
+import './assets/main.css';
 
-app.use(createPinia())
-app.use(router)
+const app = createApp(App);
 
-app.mount('#app')
+app.use(createPinia());
+app.use(router);
+app.use(Button);
+app.use(Input);
+app.config.globalProperties.$message = message;
+app.mount('#app');
